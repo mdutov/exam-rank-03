@@ -33,14 +33,14 @@ int ft_strlen(char *str)
 	return (i);
 }
 
-int print_info(drawing *drawing)
+int print_info(drawing *draw)
 {
 	int i;
 
 	i = 0;
-	while (i < drawing->height)
+	while (i < draw->height)
 	{
-		printf("%.*s\n", drawing->width, drawing->matrice + i * drawing->width);
+		printf("%.*s\n", draw->width, draw->matrice + i * draw->width);
 		i = i + 1;
 	}
 	return i;
@@ -77,16 +77,16 @@ int is_in_circle(float x, float y, circle *circle)
 	return (0);
 }
 
-void execute_one(circle *circle, drawing *drawing, int x, int y)
+void execute_one(circle *circle, drawing *draw, int x, int y)
 {
 	int is_in;
 
 	is_in = is_in_circle((float)x, (float)y, circle);
 	if ((is_in == 2) || ((is_in == 1 && (circle->type == 'C'))))
-		drawing->matrice[x + y * drawing->width] = circle->color;
+		draw->matrice[x + y * draw->width] = circle->color;
 }
 
-int apply_op(circle *circle, drawing *drawing)
+int apply_op(circle *circle, drawing *draw)
 {
 	int j;
 	int i;
@@ -94,33 +94,33 @@ int apply_op(circle *circle, drawing *drawing)
 	if ((circle->radius <= 0.00000000) || ((circle->type != 'C' && (circle->type != 'c'))))
 		return (1);
 	i = 0;
-	while (i < drawing->width)
+	while (i < draw->width)
 	{
 		j = 0;
-		while (j < drawing->height)
-			execute_one(circle, drawing, i, j++);
+		while (j < draw->height)
+			execute_one(circle, draw, i, j++);
 		i++;
 	}
 	return (0);
 }
 
-int get_info(FILE *file, drawing *drawing)
+int get_info(FILE *file, drawing *draw)
 {
 	int scan_ret;
 	int i;
 	char background;
 
-	scan_ret = fscanf(file, "%d %d %c\n", &drawing->width, &drawing->height, &background);
+	scan_ret = fscanf(file, "%d %d %c\n", &draw->width, &draw->height, &background);
 	if (scan_ret == 3)
 	{
-		if ((((drawing->width < 1) || (300 < drawing->width)) || (drawing->height < 1)) || (300 < drawing->height))
+		if ((((draw->width < 1) || (300 < draw->width)) || (draw->height < 1)) || (300 < draw->height))
 			return (1);
-		drawing->matrice = (char *)malloc(drawing->width * drawing->height);
-		if (!drawing->matrice)
+		draw->matrice = (char *)malloc(draw->width * draw->height);
+		if (!draw->matrice)
 			return (1);
 		i = 0;
-		while (i < drawing->width * drawing->height)
-			drawing->matrice[i++] = background;
+		while (i < draw->width * draw->height)
+			draw->matrice[i++] = background;
 		return (0);
 	}
 	return (1);
@@ -130,20 +130,20 @@ int execute(FILE *file)
 {
 	int scan_ret;
 	circle circle;
-	drawing drawing;
+	drawing draw;
 
-	if (!get_info(file, &drawing))
+	if (!get_info(file, &draw))
 	{
 		scan_ret = fscanf(file, "%c %f %f %f %c\n", &circle.type, &circle.x, &circle.y, &circle.radius, &circle.color);
 		while (scan_ret == 5)
 		{
-			if (apply_op(&circle, &drawing))
+			if (apply_op(&circle, &draw))
 				return (1);
 			scan_ret = fscanf(file, "%c %f %f %f %c\n", &circle.type, &circle.x, &circle.y, &circle.radius, &circle.color);
 		}
 		if (scan_ret == -1)
 		{
-			print_info(&drawing);
+			print_info(&draw);
 			return (0);
 		}
 		return (1);
