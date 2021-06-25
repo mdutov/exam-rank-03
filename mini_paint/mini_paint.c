@@ -1,28 +1,31 @@
-#include <stdio.h>
-#include <unistd.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <math.h>
+#include <unistd.h>
 
-typedef struct	s_zone
-{
-	int		width;
-	int		height;
-	char	background;
-}				t_zone;
+typedef struct drawing drawing, *Pdrawing;
 
-typedef struct	s_shape
+struct drawing
 {
-	char	type;
-	float	x;
-	float	y;
-	float	radius;
-	char	color;
-}				t_shape;
+	int width;
+	int height;
+	char *matrice;
+};
 
-int
-	ft_strlen(char const *str)
+typedef struct circle circle, *Pcircle;
+
+struct circle
 {
-	int	i;
+	char type;
+	float x;
+	float y;
+	float radius;
+	char color;
+};
+
+int ft_strlen(char *str)
+{
+	int i;
 
 	i = 0;
 	while (str[i])
@@ -30,133 +33,141 @@ int
 	return (i);
 }
 
-char
-	*get_zone(FILE *file, t_zone *zone)
+int print_info(drawing *drawing)
 {
-	int		i;
-	char	*tmp;
+	int i;
 
-	if (fscanf(file, "%d %d %c\n", &zone->width, &zone->height, &zone->background) != 3)
-		return (NULL);
-	if (zone->width <= 0 || zone->width > 300 || zone->height <= 0 || zone->height > 300)
-		return (NULL);
-	if (!(tmp = (char*)malloc(sizeof(*tmp) * (zone->width * zone->height))))
-		return (NULL);
 	i = 0;
-	while (i < zone->width * zone->height)
-		tmp[i++] = zone->background;
-	return (tmp);
+	while (i < drawing->height)
+	{
+		printf("%.*s\n", drawing->width, drawing->matrice + i * drawing->width);
+		i = i + 1;
+	}
+	return i;
 }
 
-int
-	in_circle(float x, float y, t_shape *shape)
+float square(float a)
 {
-	float	distance;
+	return (a * a);
+}
 
-	distance = sqrtf(powf(x - shape->x, 2.) + powf(y - shape->y, 2.));
-	if (distance <= shape->radius)
+float sqrt_dist(float x1, float y1, float x2, float y2)
+{
+	float dist_x;
+	float dist_y;
+
+	dist_x = square(x1 - x2);
+	dist_y = square(y1 - y2);
+	return (sqrt(dist_x + dist_y));
+}
+
+int is_in_circle(float x, float y, circle *circle)
+{
+	float dist;
+	float dist_sqrt;
+
+	dist_sqrt = sqrt_dist(x, y, circle->x, circle->y);
+	dist = dist_sqrt - circle->radius;
+	if (dist <= 0.00000000)
 	{
-		if ((shape->radius - distance) < 1.00000000)
-			return (2);
-		return (1);
+		if (dist <= -1.00000000)
+			return (1); // Inside
+		return (2);		// Border
 	}
 	return (0);
 }
 
-void
-	draw_shape(t_zone *zone, char *drawing, t_shape *shape)
+void execute_one(circle *circle, drawing *drawing, int x, int y)
 {
-	int	y;
-	int	x;
-	int	is_it;
+	int is_in;
 
-	y = 0;
-	while (y < zone->height)
-	{
-		x = 0;
-		while (x < zone->width)
-		{
-			is_it = in_circle((float)x, (float)y, shape);
-			if ((shape->type == 'c' && is_it == 2)
-				|| (shape->type == 'C' && is_it))
-				drawing[(y * zone->width) + x] = shape->color;
-			x++;
-		}
-		y++;
-	}
+	is_in = is_in_circle((float)x, (float)y, circle);
+	if ((is_in == 2) || ((is_in == 1 && (circle->type == 'C'))))
+		drawing->matrice[x + y * drawing->width] = circle->color;
 }
 
-int
-	draw_shapes(FILE *file, t_zone *zone, char *drawing)
+int apply_op(circle *circle, drawing *drawing)
 {
-	t_shape	tmp;
-	int		ret;
+	int j;
+	int i;
 
-	while ((ret = fscanf(file, "%c %f %f %f %c\n", &tmp.type, &tmp.x, &tmp.y, &tmp.radius, &tmp.color)) == 5)
-	{
-		if (tmp.radius <= 0.00000000 || (tmp.type != 'c' && tmp.type != 'C'))
-			return (0);
-		draw_shape(zone, drawing, &tmp);
-	}
-	if (ret != -1)
-		return (0);
-	return (1);
-}
-
-void
-	draw_drawing(t_zone *zone, char *drawing)
-{
-	int	i;
-
+	if ((circle->radius <= 0.00000000) || ((circle->type != 'C' && (circle->type != 'c'))))
+		return (1);
 	i = 0;
-	while (i < zone->height)
+	while (i < drawing->width)
 	{
-		write(1, drawing + (i * zone->width), zone->width);
-		write(1, "\n", 1);
+		j = 0;
+		while (j < drawing->height)
+			execute_one(circle, drawing, i, j++);
 		i++;
 	}
-}
-
-int
-	str_error(char const *str)
-{
-	if (str)
-		write(1, str, ft_strlen(str));
-	return (1);
-}
-
-int
-	clear_all(FILE *file, char *drawing, char const *str)
-{
-	if (file)
-		fclose(file);
-	if (drawing)
-		free(drawing);
-	if (str)
-		str_error(str);
-	return (1);
-}
-
-int
-	main(int argc, char **argv)
-{
-	FILE	*file;
-	t_zone	zone;
-	char	*drawing;
-
-	zone.width = 0;
-	zone.height = 0;
-	zone.background = 0;
-	drawing = NULL;
-	if (argc != 2)
-		return (str_error("Error: argument\n"));
-	if (!(file = fopen(argv[1], "r")))
-		return (str_error("Error: Operation file corrupted\n"));
-	if (!(drawing = get_zone(file, &zone)))
-		return (clear_all(file, NULL, "Error: Operation file corrupted\n"));
-	if (!(draw_shapes(file, &zone, drawing)))
-		return (clear_all(file, drawing, "Error: Operation file corrupted\n"));
-	draw_drawing(&zone, drawing);
-	clear_all(file, drawing, NULL);
 	return (0);
+}
+
+int get_info(FILE *file, drawing *drawing)
+{
+	int scan_ret;
+	int i;
+	char background;
+
+	scan_ret = fscanf(file, "%d %d %c\n", &drawing->width, &drawing->height, &background);
+	if (scan_ret == 3)
+	{
+		if ((((drawing->width < 1) || (300 < drawing->width)) || (drawing->height < 1)) || (300 < drawing->height))
+			return (1);
+		drawing->matrice = (char *)malloc(drawing->width * drawing->height);
+		if (!drawing->matrice)
+			return (1);
+		i = 0;
+		while (i < drawing->width * drawing->height)
+			drawing->matrice[i++] = background;
+		return (0);
+	}
+	return (1);
+}
+
+int execute(FILE *file)
+{
+	int scan_ret;
+	circle circle;
+	drawing drawing;
+
+	if (!get_info(file, &drawing))
+	{
+		scan_ret = fscanf(file, "%c %f %f %f %c\n", &circle.type, &circle.x, &circle.y, &circle.radius, &circle.color);
+		while (scan_ret == 5)
+		{
+			if (apply_op(&circle, &drawing))
+				return (1);
+			scan_ret = fscanf(file, "%c %f %f %f %c\n", &circle.type, &circle.x, &circle.y, &circle.radius, &circle.color);
+		}
+		if (scan_ret == -1)
+		{
+			print_info(&drawing);
+			return (0);
+		}
+		return (1);
+	}
+	return (1);
+}
+
+int main(int argc, char **argv)
+{
+	int i;
+	FILE *file;
+
+	if (argc == 2)
+	{
+		file = fopen(argv[1], "r");
+		if (file && !execute(file))
+			return (0);
+		i = ft_strlen("Error: Operation file corrupted\n");
+		write(1, "Error: Operation file corrupted\n", i);
+	}
+	else
+	{
+		i = ft_strlen("Error: argument\n");
+		write(1, "Error: argument\n", i);
+	}
+	return (1);
 }
